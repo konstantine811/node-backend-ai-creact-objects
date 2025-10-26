@@ -1,0 +1,198 @@
+[
+  {
+    "text": "створи куб",
+    "label": {
+      "type": "cube",
+      "color": "blue",
+      "radius": 0,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "додай куб будь ласка",
+    "label": {
+      "type": "cube",
+      "color": "green",
+      "radius": 0,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "мені потрібен синій куб праворуч",
+    "label": {
+      "type": "cube",
+      "color": "blue",
+      "radius": 0,
+      "posX": 2,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "cube 2 на 2 на 2 на (0,0,0)",
+    "label": {
+      "type": "cube",
+      "color": "white",
+      "radius": 0,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 2,
+      "sizeY": 2,
+      "sizeZ": 2
+    }
+  },
+  {
+    "text": "box object зліва",
+    "label": {
+      "type": "cube",
+      "color": "yellow",
+      "radius": 0,
+      "posX": -2,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "green cube at (1,0,-3)",
+    "label": {
+      "type": "cube",
+      "color": "green",
+      "radius": 0,
+      "posX": 1,
+      "posY": 0,
+      "posZ": -3,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "куб 3 на 1 на 3 зверху",
+    "label": {
+      "type": "cube",
+      "color": "red",
+      "radius": 0,
+      "posX": 0,
+      "posY": 2,
+      "posZ": 0,
+      "sizeX": 3,
+      "sizeY": 1,
+      "sizeZ": 3
+    }
+  },
+  {
+    "text": "додай сферу",
+    "label": {
+      "type": "sphere",
+      "color": "red",
+      "radius": 1,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 0,
+      "sizeY": 0,
+      "sizeZ": 0
+    }
+  },
+  {
+    "text": "blue sphere",
+    "label": {
+      "type": "sphere",
+      "color": "blue",
+      "radius": 1,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 0,
+      "sizeY": 0,
+      "sizeZ": 0
+    }
+  },
+  {
+    "text": "створи сферу 1 на 1",
+    "label": {
+      "type": "sphere",
+      "color": "white",
+      "radius": 1,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 0,
+      "sizeY": 0,
+      "sizeZ": 0
+    }
+  },
+  {
+    "text": "додай кулю 1 на 1 будь ласка",
+    "label": {
+      "type": "sphere",
+      "color": "green",
+      "radius": 1,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 0,
+      "sizeY": 0,
+      "sizeZ": 0
+    }
+  },
+  {
+    "text": "сферу 1 на 1 на позиції (0,0,0)",
+    "label": {
+      "type": "sphere",
+      "color": "blue",
+      "radius": 1,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 0,
+      "sizeY": 0,
+      "sizeZ": 0
+    }
+  },
+  {
+    "text": "створи куб",
+    "label": {
+      "type": "cube",
+      "color": "blue",
+      "radius": 0,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  },
+  {
+    "text": "додай куб без розміру",
+    "label": {
+      "type": "cube",
+      "color": "yellow",
+      "radius": 0,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "sizeX": 1,
+      "sizeY": 1,
+      "sizeZ": 1
+    }
+  }
+]
