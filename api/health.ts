@@ -1,6 +1,6 @@
 // api/health.ts
 
-import { applyCors, checkOriginAllowed } from "../security";
+import { applyCors, checkOriginAllowed } from "../src/security";
 
 export default async function handler(req: any, res: any) {
   applyCors(res, req);

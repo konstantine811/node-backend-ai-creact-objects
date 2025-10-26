@@ -1,9 +1,9 @@
 // ↑ я зараз поясню цей файл нижче
 // і dotenv НЕ треба тут у Vercel середовищі, Vercel сам закидає env у process.env
 
-import { buildPrompt } from "../config/prompt-create-objects";
-import { applyCors, checkOriginAllowed } from "../security";
-import { toObjectsForFrontend } from "../utils/handle-pattern-json-objects";
+import { buildPrompt } from "../src/config/prompt-create-objects";
+import { applyCors, checkOriginAllowed } from "../src/security";
+import { toObjectsForFrontend } from "../src/utils/handle-pattern-json-objects";
 
 const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";

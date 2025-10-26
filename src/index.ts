@@ -1,8 +1,7 @@
 // src/index.ts
 import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
-import sceneParseRouter from "./api/scene-parse";
-
+import sceneParseRouter from "../api/scene-parse";
 dotenv.config(); // читає .env
 
 const app = express();
