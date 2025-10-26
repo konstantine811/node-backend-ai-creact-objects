@@ -1,28 +1,45 @@
-import express from "express";
-import { buildPrompt } from "../config/prompt-create-objects";
-import { toObjectsForFrontend } from "../utils/handle-pattern-json-objects";
+// ↑ я зараз поясню цей файл нижче
+// і dotenv НЕ треба тут у Vercel середовищі, Vercel сам закидає env у process.env
 
-const router = express.Router();
+import { buildPrompt } from "../config/prompt-create-objects";
+import { applyCors, checkOriginAllowed } from "../security";
+import { toObjectsForFrontend } from "../utils/handle-pattern-json-objects";
 
 const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 
-router.post("/", async (req, res) => {
+export default async function handler(req: any, res: any) {
+  // 1. CORS headers for every request
+  applyCors(res, req);
+
+  // 2. Handle preflight OPTIONS
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // 3. Only allow POST (твій бек каже POST)
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // 4. Origin/runtime check
+  if (!checkOriginAllowed(req)) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
   try {
     const userText: string = req.body?.text ?? "";
-    console.log(">>> USER TEXT:", userText);
 
-    const rawKey = process.env.ANTHROPIC_API_KEY || "";
-    const apiKey = rawKey.trim();
+    const apiKeyRaw = process.env.ANTHROPIC_API_KEY || "";
+    const apiKey = apiKeyRaw.trim();
     if (!apiKey || !/^[\x00-\x7F]+$/.test(apiKey)) {
       console.error("❌ invalid key");
       return res.status(200).json({ objects: [] });
     }
 
     const prompt = buildPrompt(userText);
-    console.log(">>> PROMPT:\n", prompt);
 
-    const claudeResponse = await fetch(CLAUDE_API_URL, {
+    const claudeResp = await fetch(CLAUDE_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,13 +58,17 @@ router.post("/", async (req, res) => {
       }),
     });
 
-    console.log(">>> CLAUDE STATUS:", claudeResponse.status);
+    if (!claudeResp.ok) {
+      console.error(
+        "Claude API error",
+        claudeResp.status,
+        await claudeResp.text()
+      );
+      return res.status(200).json({ objects: [] });
+    }
 
-    const claudeJson: any = await claudeResponse.json();
-    console.log(">>> RAW CLAUDE JSON:", claudeJson);
-
+    const claudeJson: any = await claudeResp.json();
     const assistantText = claudeJson?.content?.[0]?.text ?? "";
-    console.log(">>> ASSISTANT TEXT:", assistantText);
 
     let parsed: any;
     try {
@@ -57,16 +78,10 @@ router.post("/", async (req, res) => {
       return res.status(200).json({ objects: [] });
     }
 
-    console.log(">>> PARSED JSON:", parsed);
-
     const objectsForFront = toObjectsForFrontend(parsed);
-    console.log(">>> OBJECTS FOR FRONT:", objectsForFront);
-
     return res.status(200).json({ objects: objectsForFront });
   } catch (err) {
     console.error("server crash in /api/scene-parse", err);
     return res.status(200).json({ objects: [] });
   }
-});
-
-export default router;
+}

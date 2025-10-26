@@ -1,4 +1,5 @@
-import express from "express";
+// src/index.ts
+import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import sceneParseRouter from "./api/scene-parse";
 
@@ -15,11 +16,7 @@ const ALLOWED_ORIGINS = new Set<string>([
 ]);
 
 // CORS guard (браузерний рівень)
-function corsGuard(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
+function corsGuard(req: Request, res: Response, next: NextFunction) {
   const origin = req.headers.origin || "";
 
   if (ALLOWED_ORIGINS.has(origin)) {
@@ -27,32 +24,25 @@ function corsGuard(
     res.header("Vary", "Origin");
   }
 
-  // які хедери дозволені
   res.header("Access-Control-Allow-Headers", "Content-Type");
-  // які методи дозволені
   res.header("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
 
   if (req.method === "OPTIONS") {
-    // відповідаємо одразу на preflight
     return res.sendStatus(200);
   }
 
   next();
 }
 
-// runtime захист перед чутливими ручками
-function originEnforce(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
+// runtime захист під /api/scene-parse
+function originEnforce(req: Request, res: Response, next: NextFunction) {
   const origin = req.headers.origin || "";
   const referer = req.headers.referer || "";
 
   const isAllowedOrigin = ALLOWED_ORIGINS.has(origin);
 
   const isAllowedReferer = [...ALLOWED_ORIGINS].some((allowed) =>
-    referer.startsWith(allowed)
+    referer?.startsWith?.(allowed)
   );
 
   const isLocalNoOrigin =
@@ -80,14 +70,14 @@ function originEnforce(
 // 1. JSON парсер
 app.use(express.json());
 
-// 2. CORS захист
+// 2. CORS
 app.use(corsGuard);
 
-// 3. наш API-роут (передаємо через originEnforce)
+// 3. основний API-роут
 app.use("/api/scene-parse", originEnforce, sceneParseRouter);
 
-// 4. healthcheck/debug (можеш залишити без originEnforce якщо хочеш пінгати руками)
-app.get("/health", (_req, res) => {
+// 4. healthcheck/debug
+app.get("/health", (_req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
