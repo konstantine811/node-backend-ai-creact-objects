@@ -66,7 +66,103 @@ function makeLinePositions(count: number, start: number[], step: number[]) {
   });
 }
 
-// convert pattern -> objects[]
+// NEW: 3D grid
+function makeGrid3DPositions(
+  count: number,
+  gridSize?: number[],
+  spacing?: number[]
+) {
+  // gridSize: [nx,ny,nz]
+  // spacing: [sx,sy,sz]
+  const [nx, ny, nz] =
+    Array.isArray(gridSize) && gridSize.length === 3
+      ? gridSize
+      : guessGrid(count); // fallback
+
+  const [sx, sy, sz] =
+    Array.isArray(spacing) && spacing.length === 3 ? spacing : [2, 2, 2];
+
+  const out: [number, number, number][] = [];
+  let i = 0;
+
+  // центровано навколо (0,0,0) для краси
+  const ox = -((nx - 1) * sx) / 2;
+  const oy = -((ny - 1) * sy) / 2;
+  const oz = -((nz - 1) * sz) / 2;
+
+  for (let ix = 0; ix < nx; ix++) {
+    for (let iy = 0; iy < ny; iy++) {
+      for (let iz = 0; iz < nz; iz++) {
+        if (i >= count) break;
+        out.push([ox + ix * sx, oy + iy * sy, oz + iz * sz]);
+        i++;
+      }
+    }
+  }
+
+  return out;
+}
+
+function guessGrid(count: number): [number, number, number] {
+  // наївно — корінь кубічний
+  const n = Math.ceil(Math.cbrt(count));
+  return [n, n, n];
+}
+
+// NEW: distribute points on sphere surface (Fibonacci sphere)
+function makeSphereShellPositions(count: number, sphereRadius: number) {
+  const out: [number, number, number][] = [];
+  const golden = Math.PI * (3 - Math.sqrt(5)); // ~2.399963...
+
+  for (let i = 0; i < count; i++) {
+    const t = i + 0.5;
+    const y = 1 - (t / count) * 2; // from 1 to -1
+    const r = Math.sqrt(1 - y * y);
+    const phi = golden * i;
+
+    const x = Math.cos(phi) * r;
+    const z = Math.sin(phi) * r;
+
+    out.push([x * sphereRadius, y * sphereRadius, z * sphereRadius]);
+  }
+  return out;
+}
+
+// NEW: DNA helix (single or double strand)
+function makeDnaHelixPositions(
+  count: number,
+  turns: number,
+  radiusHelix: number,
+  stepHeight: number,
+  doubleStrand: boolean
+) {
+  // helixTurns = кількість обертів (2π за оберт)
+  // helixStep = вертикальна відстань між сусідніми точками вздовж осі Y
+  // helixRadius = радіус по XZ
+  const out: [number, number, number][] = [];
+
+  for (let i = 0; i < count; i++) {
+    const t = (i / count) * (turns * 2 * Math.PI); // кут
+    const y = i * stepHeight;
+
+    // перша спіраль
+    const x1 = radiusHelix * Math.cos(t);
+    const z1 = radiusHelix * Math.sin(t);
+    out.push([x1, y, z1]);
+
+    if (doubleStrand) {
+      // друга спіраль зміщена по фазі на π
+      const x2 = radiusHelix * Math.cos(t + Math.PI);
+      const z2 = radiusHelix * Math.sin(t + Math.PI);
+      out.push([x2, y, z2]);
+    }
+  }
+
+  // якщо doubleStrand=true, ми створили 2*count точок
+  return out.slice(0, count);
+  // (можеш прибрати slice і тоді реально буде подвійно більше об'єктів)
+}
+
 function expandPattern(pattern: any) {
   const shape = pattern.shape === "cube" ? "cube" : "sphere";
 
@@ -83,42 +179,58 @@ function expandPattern(pattern: any) {
       : [0, 0, 0];
 
   const arrangement = pattern.arrangement;
+
   let positions: [number, number, number][];
 
-  if (arrangement === "circle") {
+  if (arrangement === "line") {
+    positions = makeLinePositions(count, pattern.start, pattern.step);
+  } else if (arrangement === "circle") {
     const circleRadius =
       typeof pattern.circleRadius === "number" ? pattern.circleRadius : 5;
     positions = makeCirclePositions(count, circleRadius);
-  } else if (arrangement === "line") {
-    positions = makeLinePositions(count, pattern.start, pattern.step);
+  } else if (arrangement === "grid3d") {
+    positions = makeGrid3DPositions(count, pattern.gridSize, pattern.spacing);
+  } else if (arrangement === "sphereShell") {
+    const sphereRadius =
+      typeof pattern.sphereRadius === "number" ? pattern.sphereRadius : 5;
+    positions = makeSphereShellPositions(count, sphereRadius);
+  } else if (arrangement === "dnaHelix") {
+    const turns =
+      typeof pattern.helixTurns === "number" ? pattern.helixTurns : 3;
+    const rad =
+      typeof pattern.helixRadius === "number" ? pattern.helixRadius : 2;
+    const step = typeof pattern.helixStep === "number" ? pattern.helixStep : 1;
+    const dbl = !!pattern.doubleStrand;
+    positions = makeDnaHelixPositions(count, turns, rad, step, dbl);
   } else {
-    // fallback: всі в (0,0,0)
+    // fallback: just stack at origin
     positions = Array.from(
       { length: count },
       () => [0, 0, 0] as [number, number, number]
     );
   }
 
-  // colors
-  let fromColor = pattern?.gradient?.from;
-  let toColor = pattern?.gradient?.to;
-  const baseColor = pattern?.baseColor || "#ffffff";
+  // кольори
+  const baseColor = pattern.baseColor || "#ffffff";
+  const gradFrom = pattern?.gradient?.from;
+  const gradTo = pattern?.gradient?.to;
+  const colors = makeGradientColors(count, gradFrom, gradTo, baseColor);
 
-  const colors = makeGradientColors(count, fromColor, toColor, baseColor);
-
+  // будуємо фінальний масив об'єктів для рендера
   return positions.map((pos, i) => {
     if (shape === "sphere") {
       return {
         type: "sphere",
-        color: colors[i],
+        color: colors[i % colors.length],
         radius: radius,
         size: [0, 0, 0],
         position: pos,
       };
     } else {
+      // cube
       return {
         type: "cube",
-        color: colors[i],
+        color: colors[i % colors.length],
         radius: 0,
         size: size,
         position: pos,
@@ -127,17 +239,13 @@ function expandPattern(pattern: any) {
   });
 }
 
-// main post-processing AFTER parsed = JSON.parse(assistantText)
-
 export function toObjectsForFrontend(parsed: any) {
-  // case 1: model gave explicit objects
+  // якщо модель повернула FORM A
   if (Array.isArray(parsed?.objects)) {
-    const cleaned = parsed.objects
+    return parsed.objects
       .filter((o: any) => o && (o.type === "cube" || o.type === "sphere"))
       .map((o: any) => {
-        const type = (o.type === "cube" ? "cube" : "sphere") as
-          | "cube"
-          | "sphere";
+        const type = o.type === "cube" ? "cube" : "sphere";
         const color = typeof o.color === "string" ? o.color : "#ffffff";
 
         const radius =
@@ -157,15 +265,12 @@ export function toObjectsForFrontend(parsed: any) {
 
         return { type, color, radius, size, position };
       });
-
-    return cleaned;
   }
 
-  // case 2: model gave pattern
+  // якщо модель повернула FORM B
   if (parsed?.pattern && typeof parsed.pattern === "object") {
     return expandPattern(parsed.pattern);
   }
 
-  // fallback
   return [];
 }
