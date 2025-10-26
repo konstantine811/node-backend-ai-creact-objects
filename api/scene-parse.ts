@@ -31,6 +31,7 @@ export default async function handler(req: any, res: any) {
     const userText: string = req.body?.text ?? "";
 
     const apiKeyRaw = process.env.ANTHROPIC_API_KEY || "";
+    console.log("apiKeyRaw >>>", apiKeyRaw);
     const apiKey = apiKeyRaw.trim();
     if (!apiKey || !/^[\x00-\x7F]+$/.test(apiKey)) {
       console.error("❌ invalid key");
