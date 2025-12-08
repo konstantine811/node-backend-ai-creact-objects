@@ -3,80 +3,90 @@ import nodemailer from "nodemailer";
 import { applyCors, checkOriginAllowed } from "../src/security";
 
 export default async function handler(req: any, res: any) {
-  applyCors(res, req);
+  try {
+    console.log("[contact] Request received", {
+      method: req.method,
+      hasBody: !!req.body,
+      bodyType: typeof req.body,
+    });
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+    applyCors(res, req);
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
 
-  if (!checkOriginAllowed(req)) {
-    return res.status(403).json({ error: "forbidden" });
-  }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
 
-  // фронт може надіслати:
-  // 1) {name,email,message}
-  // 2) {text:"{...json...}"} (старий фронт)
-  // 3) чистий рядок body (якщо щось пішло не так з headers)
-  let name: unknown;
-  let email: unknown;
-  let message: unknown;
+    if (!checkOriginAllowed(req)) {
+      console.log("[contact] Origin not allowed", {
+        origin: req.headers.origin,
+        referer: req.headers.referer,
+      });
+      return res.status(403).json({ error: "forbidden" });
+    }
 
-  const body = req.body;
+    // фронт може надіслати:
+    // 1) {name,email,message}
+    // 2) {text:"{...json...}"} (старий фронт)
+    // 3) чистий рядок body (якщо щось пішло не так з headers)
+    let name: unknown;
+    let email: unknown;
+    let message: unknown;
 
-  // варіант 1: звичайний об'єкт
-  if (body && typeof body === "object") {
-    const {
-      name: n,
-      email: e,
-      message: m,
-      text,
-    } = (body as Record<string, any>) || {};
-    name = n;
-    email = e;
-    message = m;
+    const body = req.body;
 
-    // варіант 2: обгорнутий у text
-    if ((!name || !email || !message) && typeof text === "string") {
+    // варіант 1: звичайний об'єкт
+    if (body && typeof body === "object") {
+      const {
+        name: n,
+        email: e,
+        message: m,
+        text,
+      } = (body as Record<string, any>) || {};
+      name = n;
+      email = e;
+      message = m;
+
+      // варіант 2: обгорнутий у text
+      if ((!name || !email || !message) && typeof text === "string") {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && typeof parsed === "object") {
+            name = name || parsed.name;
+            email = email || parsed.email;
+            message = message || parsed.message;
+          }
+        } catch (_err) {
+          // ignore, перевірка нижче впаде на валідації
+        }
+      }
+    }
+
+    // варіант 3: body як рядок JSON
+    if ((!name || !email || !message) && typeof body === "string") {
       try {
-        const parsed = JSON.parse(text);
+        const parsed = JSON.parse(body);
         if (parsed && typeof parsed === "object") {
           name = name || parsed.name;
           email = email || parsed.email;
           message = message || parsed.message;
         }
       } catch (_err) {
-        // ignore, перевірка нижче впаде на валідації
+        // ignore
       }
     }
-  }
 
-  // варіант 3: body як рядок JSON
-  if ((!name || !email || !message) && typeof body === "string") {
-    try {
-      const parsed = JSON.parse(body);
-      if (parsed && typeof parsed === "object") {
-        name = name || parsed.name;
-        email = email || parsed.email;
-        message = message || parsed.message;
-      }
-    } catch (_err) {
-      // ignore
+    const nameSafe = typeof name === "string" ? name.trim() : "";
+    const emailSafe = typeof email === "string" ? email.trim() : "";
+    const messageSafe = typeof message === "string" ? message.trim() : "";
+
+    if (!nameSafe || !emailSafe || !messageSafe) {
+      return res.status(400).json({ error: "Invalid payload" });
     }
-  }
 
-  const nameSafe = typeof name === "string" ? name.trim() : "";
-  const emailSafe = typeof email === "string" ? email.trim() : "";
-  const messageSafe = typeof message === "string" ? message.trim() : "";
-
-  if (!nameSafe || !emailSafe || !messageSafe) {
-    return res.status(400).json({ error: "Invalid payload" });
-  }
-
-  try {
     const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT || 587);
     const user = process.env.SMTP_USER;
@@ -138,9 +148,17 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    console.log("[contact] Success");
     return res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error("contact handler failed", err);
-    return res.status(500).json({ error: "Internal error" });
+  } catch (err: any) {
+    console.error("[contact] Handler error:", err);
+    console.error("[contact] Error stack:", err?.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Internal error",
+        message:
+          process.env.NODE_ENV === "development" ? err?.message : undefined,
+      });
+    }
   }
 }
