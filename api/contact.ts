@@ -101,26 +101,40 @@ export default async function handler(req: any, res: any) {
       text: `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`,
     });
 
+    // Telegram - опціонально, не падаємо якщо не працює
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
     if (botToken && chatId) {
-      const text =
-        `✉️ Нове повідомлення з сайту\n` +
-        `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`;
+      try {
+        const text =
+          `✉️ Нове повідомлення з сайту\n` +
+          `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`;
 
-      const tgResp = await fetch(
-        `https://api.telegram.org/bot${botToken}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text }),
+        // chat_id може бути рядком або числом
+        const chatIdNum =
+          typeof chatId === "string" && /^-?\d+$/.test(chatId)
+            ? chatId.includes("-")
+              ? chatId
+              : Number(chatId)
+            : chatId;
+
+        const tgResp = await fetch(
+          `https://api.telegram.org/bot${botToken}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatIdNum, text }),
+          }
+        );
+
+        if (!tgResp.ok) {
+          const tgText = await tgResp.text();
+          console.error("Telegram send failed", tgResp.status, tgText);
         }
-      );
-
-      if (!tgResp.ok) {
-        const tgText = await tgResp.text();
-        console.error("Telegram send failed", tgResp.status, tgText);
+      } catch (tgErr) {
+        // Telegram помилка не має падати весь handler
+        console.error("Telegram error (non-fatal):", tgErr);
       }
     }
 
