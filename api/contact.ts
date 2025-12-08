@@ -97,6 +97,14 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: "Mail config missing" });
     }
 
+    console.log("[contact] Sending email...", {
+      host,
+      port,
+      to,
+      hasUser: !!user,
+      hasPass: !!pass,
+    });
+
     const transporter = nodemailer.createTransport({
       host,
       port,
@@ -104,12 +112,26 @@ export default async function handler(req: any, res: any) {
       auth: { user, pass },
     });
 
-    await transporter.sendMail({
-      from: `"Portfolio Contact" <${user}>`,
-      to,
-      subject: "Нове повідомлення з портфоліо",
-      text: `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`,
-    });
+    try {
+      await transporter.sendMail({
+        from: `"Portfolio Contact" <${user}>`,
+        to,
+        subject: "Нове повідомлення з портфоліо",
+        text: `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`,
+        encoding: "utf8",
+      });
+      console.log("[contact] Email sent successfully");
+    } catch (emailErr: any) {
+      console.error("[contact] Email send failed:", emailErr);
+      console.error("[contact] Email error details:", {
+        code: emailErr?.code,
+        response: emailErr?.response,
+        responseCode: emailErr?.responseCode,
+        command: emailErr?.command,
+      });
+      // Не падаємо на email помилці, але логуємо
+      throw emailErr; // все одно кидаємо, бо це критична помилка
+    }
 
     // Telegram - опціонально, не падаємо якщо не працює
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
