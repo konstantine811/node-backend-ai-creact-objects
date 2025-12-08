@@ -1,0 +1,75 @@
+import nodemailer from "nodemailer";
+
+import { applyCors, checkOriginAllowed } from "../src/security";
+
+export default async function handler(req: any, res: any) {
+  applyCors(res, req);
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!checkOriginAllowed(req)) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  const { name, email, message } = (req.body as Record<string, any>) || {};
+
+  const nameSafe = typeof name === "string" ? name.trim() : "";
+  const emailSafe = typeof email === "string" ? email.trim() : "";
+  const messageSafe = typeof message === "string" ? message.trim() : "";
+
+  if (!nameSafe || !emailSafe || !messageSafe) {
+    return res.status(400).json({ error: "Invalid payload" });
+  }
+
+  try {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT || 587);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const to = process.env.CONTACT_EMAIL;
+
+    if (!host || !user || !pass || !to) {
+      return res.status(500).json({ error: "Mail config missing" });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from: `"Portfolio Contact" <${user}>`,
+      to,
+      subject: "Нове повідомлення з портфоліо",
+      text: `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`,
+    });
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+
+    if (botToken && chatId) {
+      const text =
+        `✉️ Нове повідомлення з сайту\n` +
+        `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`;
+
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+      });
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("contact handler failed", err);
+    return res.status(500).json({ error: "Internal error" });
+  }
+}
