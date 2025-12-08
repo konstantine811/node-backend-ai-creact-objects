@@ -93,8 +93,27 @@ export default async function handler(req: any, res: any) {
     const pass = process.env.SMTP_PASS;
     const to = process.env.CONTACT_EMAIL;
 
+    console.log("[contact] Env check:", {
+      hasHost: !!host,
+      hasPort: !!port,
+      hasUser: !!user,
+      hasPass: !!pass,
+      hasTo: !!to,
+      hostValue: host ? `${host.substring(0, 5)}...` : "missing",
+      portValue: port,
+    });
+
     if (!host || !user || !pass || !to) {
-      return res.status(500).json({ error: "Mail config missing" });
+      const missing = [];
+      if (!host) missing.push("SMTP_HOST");
+      if (!user) missing.push("SMTP_USER");
+      if (!pass) missing.push("SMTP_PASS");
+      if (!to) missing.push("CONTACT_EMAIL");
+      console.error("[contact] Missing env vars:", missing);
+      return res.status(500).json({
+        error: "Mail config missing",
+        missing: missing,
+      });
     }
 
     console.log("[contact] Sending email...", {
