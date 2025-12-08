@@ -2,6 +2,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import sceneParseRouter from "../api/scene-parse";
+import contactHandler from "../api/contact";
 dotenv.config(); // читає .env
 
 const app = express();
@@ -74,6 +75,10 @@ app.use(corsGuard);
 
 // 3. основний API-роут
 app.use("/api/scene-parse", originEnforce, sceneParseRouter);
+app.use("/api/contact", originEnforce, async (req: Request, res: Response) => {
+  // адаптер для serverless-стилю хендлера
+  await contactHandler(req, res);
+});
 
 // 4. healthcheck/debug
 app.get("/health", (_req: Request, res: Response) => {

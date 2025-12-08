@@ -17,7 +17,56 @@ export default async function handler(req: any, res: any) {
     return res.status(403).json({ error: "forbidden" });
   }
 
-  const { name, email, message } = (req.body as Record<string, any>) || {};
+  // фронт може надіслати:
+  // 1) {name,email,message}
+  // 2) {text:"{...json...}"} (старий фронт)
+  // 3) чистий рядок body (якщо щось пішло не так з headers)
+  let name: unknown;
+  let email: unknown;
+  let message: unknown;
+
+  const body = req.body;
+
+  // варіант 1: звичайний об'єкт
+  if (body && typeof body === "object") {
+    const {
+      name: n,
+      email: e,
+      message: m,
+      text,
+    } = (body as Record<string, any>) || {};
+    name = n;
+    email = e;
+    message = m;
+
+    // варіант 2: обгорнутий у text
+    if ((!name || !email || !message) && typeof text === "string") {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === "object") {
+          name = name || parsed.name;
+          email = email || parsed.email;
+          message = message || parsed.message;
+        }
+      } catch (_err) {
+        // ignore, перевірка нижче впаде на валідації
+      }
+    }
+  }
+
+  // варіант 3: body як рядок JSON
+  if ((!name || !email || !message) && typeof body === "string") {
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed === "object") {
+        name = name || parsed.name;
+        email = email || parsed.email;
+        message = message || parsed.message;
+      }
+    } catch (_err) {
+      // ignore
+    }
+  }
 
   const nameSafe = typeof name === "string" ? name.trim() : "";
   const emailSafe = typeof email === "string" ? email.trim() : "";
@@ -60,11 +109,19 @@ export default async function handler(req: any, res: any) {
         `✉️ Нове повідомлення з сайту\n` +
         `Ім'я: ${nameSafe}\nEmail: ${emailSafe}\n\n${messageSafe}`;
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text }),
-      });
+      const tgResp = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text }),
+        }
+      );
+
+      if (!tgResp.ok) {
+        const tgText = await tgResp.text();
+        console.error("Telegram send failed", tgResp.status, tgText);
+      }
     }
 
     return res.status(200).json({ ok: true });
